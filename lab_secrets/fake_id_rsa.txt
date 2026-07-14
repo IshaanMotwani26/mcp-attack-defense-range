@@ -1,0 +1,4 @@
+-----BEGIN FAKE PRIVATE KEY-----
+FAKE-KEY-FOR-SECURITY-LAB-DO-NOT-USE
+this-file-exists-only-to-demonstrate-mcp-tool-poisoning
+-----END FAKE PRIVATE KEY-----
