@@ -12,6 +12,8 @@ detection engine — with every remaining blind spot documented honestly.
 
 
 
+
+
 \## Why this exists
 
 
@@ -30,6 +32,8 @@ understand the threat model from both sides.
 
 
 
+
+
 \## The core thesis
 
 
@@ -41,6 +45,8 @@ often catches these attacks — but a different, older, cheaper, or jailbroken m
 may not. So every defense here operates at the infrastructure layer and works
 
 \*regardless of whether the model cooperates\*.
+
+
 
 
 
@@ -65,6 +71,8 @@ may not. So every defense here operates at the infrastructure layer and works
 \*\*One detection engine, two enforcement points:\*\* the same rules run at the
 
 description layer (scanner) and the data layer (proxy).
+
+
 
 
 
@@ -99,6 +107,8 @@ description layer (scanner) and the data layer (proxy).
 &#x20;     DAY2..DAY6\_\*.md        Per-phase findings writeups
 
 &#x20;     traces/                JSON evidence of every attack + defense run
+
+
 
 
 
@@ -144,6 +154,8 @@ Run the runtime guard against the toxic-flow attack:
 
 
 
+
+
 \## Key findings
 
 
@@ -186,6 +198,8 @@ Full per-phase writeups and JSON traces are in attacks/.
 
 
 
+
+
 \## Limitations \& future work
 
 
@@ -207,6 +221,8 @@ Full per-phase writeups and JSON traces are in attacks/.
 &#x20; strengthen the "don't depend on the model" thesis.
 
 \- Remote/HTTP MCP transports and OAuth flows are out of scope here.
+
+
 
 
 
