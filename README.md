@@ -1,218 +1,147 @@
-\# MCP Attack \& Defense Range
 
 
+# MCP Attack & Defense Range
 
-A hands-on security lab that \*\*attacks\*\* AI agents through the Model Context
+**A security lab that attacks AI agents through the Model Context Protocol (MCP) — then defends them.**
 
-Protocol (MCP) and \*\*defends\*\* them with a custom multi-layer detection system.
+`Python 3.12` · `MCP SDK` · `Anthropic API` · `3 attack classes` · `3 defense layers`
 
-Three real-world attack classes, three complementary defensive layers, one shared
+Three real-world attack classes. Three complementary defensive layers. One shared
+detection engine. Every remaining blind spot documented honestly.
 
-detection engine — with every remaining blind spot documented honestly.
+<br>
 
+---
 
+## Why this exists
 
-\## Why this exists
+MCP is the emerging standard connecting AI agents to external tools — and its
+security is still largely unsolved.
 
+- Tool-poisoning attacks were first disclosed in **2025**.
+- The first malicious MCP package (`postmark-mcp`) appeared in the wild in **September 2025**.
+- **2026** measurements flag a meaningful share of public servers as vulnerable.
 
+This project builds the attacks, then builds the defenses — to understand the threat
+model from both sides.
 
-MCP is the emerging standard that connects AI agents to external tools. Its
+<br>
 
-security is still largely unsolved: tool-poisoning attacks were first disclosed in
+---
 
-2025, the first malicious MCP package (`postmark-mcp`) appeared in the wild that
+## The core thesis
 
-September, and 2026 measurements flag a meaningful share of public servers as
+> **Effective defense must not depend on the model refusing.**
 
-vulnerable. This project builds the attacks, then builds the defenses, to
+A well-aligned model often catches these attacks. A different, older, cheaper, or
+jailbroken model may not. So every defense here operates at the **infrastructure
+layer** and works *regardless of whether the model cooperates*.
 
-understand the threat model from both sides.
+<br>
 
+---
 
-
-\## The core thesis
-
-
-
-\*\*Effective defense must not depend on the model refusing.\*\* A well-aligned model
-
-often catches these attacks — but a different, older, cheaper, or jailbroken model
-
-may not. So every defense here operates at the infrastructure layer and works
-
-\*regardless of whether the model cooperates\*.
-
-
-
-\## Coverage at a glance
-
-
+## Coverage at a glance
 
 | Attack class | What it exploits | Defense | Layer |
-
 |---|---|---|---|
+| **Tool poisoning** | Hidden instructions in a tool's *description* | Signature scanner | Description (static) |
+| **Rug pull** | A tool that ships clean, then silently mutates | Tool pinning (SHA-256) | Description (temporal) |
+| **Toxic flow** | Injection arriving in *data* a tool returns | Runtime guard (proxy) | Data (runtime) |
+| Tool poisoning *(benign-worded)* | Payload phrased to dodge trigger words | ⚠️ *Documented gap* | — honest limitation |
 
-| \*\*Tool poisoning\*\* | Hidden instructions in a tool's \*description\* | Signature scanner | Description (static) |
+> **One detection engine, two enforcement points** — the same rules run at the
+> description layer (scanner) and the data layer (proxy).
 
-| \*\*Rug pull\*\* | A tool that ships clean, then silently mutates | Tool pinning (SHA-256 fingerprints) | Description (temporal) |
+<br>
 
-| \*\*Toxic flow\*\* | Injection arriving in \*data\* a tool returns | Runtime guard (proxy) | Data (runtime) |
+---
 
-| Tool poisoning, \*benign-worded\* | Payload phrased to avoid trigger words | \*Documented gap\* | — honest limitation |
+## Repository layout
 
+    agent/host.py            The MCP agent loop (discovers + calls tools via Claude)
+    servers/
+      benign_math.py         Honest control server
+      poisoned_math.py       Tool-poisoning variants (V1 tagged, V2 benign-cover, V3 split)
+      toxic_flow_github.py   Clean server; injection rides in on returned issue data
+      rugpull_email.py       Ships clean, mutates via a local flag file
+    scanner/
+      rules.py               Detection rules + severity/verdict logic
+      scan.py                Scans all tool descriptions + checks pins
+      pinning.py             SHA-256 tool fingerprinting for rug-pull detection
+    proxy/guard.py           Runtime guard: inspects tool RESULTS before the model sees them
+    attacks/
+      DAY2..DAY6_*.md        Per-phase findings writeups
+      traces/                JSON evidence of every attack + defense run
 
+<br>
 
-\*\*One detection engine, two enforcement points:\*\* the same rules run at the
+---
 
-description layer (scanner) and the data layer (proxy).
+## Quick start
 
+**Setup**
 
+    uv venv
+    .venv\Scripts\activate
+    uv add "mcp[cli]>=1.27,<2" anthropic python-dotenv httpx
+    # then add your ANTHROPIC_API_KEY to a .env file
 
-\## Repository layout
+**Run the agent** against the benign server
 
+    uv run python agent/host.py servers/benign_math.py "What is 17 times 4?"
 
+**Scan a server** for tool poisoning + rug pulls
 
-&#x20;   agent/host.py            The MCP agent loop (discovers + calls tools via Claude)
+    uv run python -m scanner.scan servers/poisoned_math.py
 
-&#x20;   servers/
+**Run the runtime guard** against the toxic-flow attack
 
-&#x20;     benign\_math.py         Honest control server
+    uv run python -m proxy.guard servers/toxic_flow_github.py "read issue #42 in acme/webapp"
 
-&#x20;     poisoned\_math.py       Tool-poisoning variants (V1 tagged, V2 benign-cover, V3 split)
+<br>
 
-&#x20;     toxic\_flow\_github.py   Clean server; injection rides in on returned issue data
+---
 
-&#x20;     rugpull\_email.py       Ships clean, mutates via a local flag file
+## Key findings
 
-&#x20;   scanner/
+**1. The model refused every naive injection tested.**
+Across four tool-poisoning framings (Day 2) and the toxic-flow data-channel attack
+(Day 3). Model-side safety is a real first line of defense — but not one to rely on.
 
-&#x20;     rules.py               Detection rules + severity/verdict logic
+**2. The static scanner catches overt poisoning with zero false positives.**
+But it has two documented blind spots: a *benign-worded* variant (V2) evaded the
+signature rules, and the toxic-flow server scanned completely clean because its
+descriptions are honest — the payload lived in data, not metadata.
 
-&#x20;     scan.py                Connects to a server, scans all tool descriptions, checks pins
+**3. Tool pinning catches rug pulls that description-scanning cannot.**
+Because it detects *change itself*, independent of wording. The mutated tool was
+flagged by pinning **and** signatures simultaneously.
 
-&#x20;     pinning.py             SHA-256 tool fingerprinting for rug-pull detection
+**4. The runtime guard closes the toxic-flow gap.**
+By inspecting tool *results* before they reach the model — neutralizing the exact
+attack the scanner was blind to, independently of model behavior.
 
-&#x20;   proxy/guard.py           Runtime guard: inspects tool RESULTS before the model sees them
+*Full per-phase writeups and JSON traces live in `attacks/`.*
 
-&#x20;   attacks/
+<br>
 
-&#x20;     DAY2..DAY6\_\*.md        Per-phase findings writeups
+---
 
-&#x20;     traces/                JSON evidence of every attack + defense run
+## Limitations & future work
 
+- **Signature detection is evadable by paraphrase.** Both the scanner and guard
+  share this blind spot. An **LLM-judge inspection pass** — a second model asked
+  *"does this contain hidden instructions?"* — would catch reworded attacks. Natural
+  next step.
+- The guard withholds an entire flagged result; a surgical version would strip only
+  the injected span.
+- Attacks were tested against a single model family; cross-model evaluation would
+  strengthen the core thesis.
+- Remote/HTTP MCP transports and OAuth flows are out of scope.
 
+<br>
 
-\## Quick start
+---
 
-
-
-Setup:
-
-
-
-&#x20;   uv venv
-
-&#x20;   .venv\\Scripts\\activate
-
-&#x20;   uv add "mcp\[cli]>=1.27,<2" anthropic python-dotenv httpx
-
-&#x20;   # then add your ANTHROPIC\_API\_KEY to a .env file
-
-
-
-Run the agent against the benign server:
-
-
-
-&#x20;   uv run python agent/host.py servers/benign\_math.py "What is 17 times 4?"
-
-
-
-Scan a server for tool poisoning + rug pulls:
-
-
-
-&#x20;   uv run python -m scanner.scan servers/poisoned\_math.py
-
-
-
-Run the runtime guard against the toxic-flow attack:
-
-
-
-&#x20;   uv run python -m proxy.guard servers/toxic\_flow\_github.py "read issue #42 in acme/webapp"
-
-
-
-\## Key findings
-
-
-
-1\. \*\*A current frontier model refused every naive injection tested\*\* — across four
-
-&#x20;  tool-poisoning framings (Day 2) and the toxic-flow data-channel attack (Day 3).
-
-&#x20;  Model-side safety is a real first line of defense, but not one to rely on.
-
-
-
-2\. \*\*The static scanner catches overt poisoning with no false positives\*\*, but has
-
-&#x20;  two documented blind spots: a \*benign-worded\* poisoning variant (V2) evaded its
-
-&#x20;  signature rules, and the toxic-flow server scanned completely clean because its
-
-&#x20;  descriptions are honest — the payload lived in data, not metadata.
-
-
-
-3\. \*\*Tool pinning catches rug pulls that description-scanning cannot\*\*, because it
-
-&#x20;  detects \*change itself\*, independent of wording. The mutated tool was flagged by
-
-&#x20;  both pinning and signatures simultaneously.
-
-
-
-4\. \*\*The runtime guard closes the toxic-flow gap\*\* by inspecting tool \*results\*
-
-&#x20;  before they reach the model — neutralizing the exact attack the scanner was
-
-&#x20;  blind to, and doing so independently of model behavior.
-
-
-
-Full per-phase writeups and JSON traces are in attacks/.
-
-
-
-\## Limitations \& future work
-
-
-
-\- \*\*Signature detection is evadable by paraphrase.\*\* Both the scanner and the guard
-
-&#x20; share this blind spot. An \*\*LLM-judge inspection pass\*\* (a second model asked
-
-&#x20; "does this contain hidden instructions?") would catch reworded attacks and is the
-
-&#x20; natural next step.
-
-\- The guard withholds an entire flagged result; a more surgical version would strip
-
-&#x20; only the injected span.
-
-\- Attacks were tested against a single model family; cross-model evaluation would
-
-&#x20; strengthen the "don't depend on the model" thesis.
-
-\- Remote/HTTP MCP transports and OAuth flows are out of scope here.
-
-
-
-\## Built with
-
-
-
-Python 3.12 · MCP Python SDK · Anthropic API · `uv`
-
+<sub>Built by Ishaan Motwani · Cybersecurity @ Purdue</sub>
