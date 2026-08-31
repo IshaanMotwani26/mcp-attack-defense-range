@@ -10,3 +10,8 @@ wheels/
 .venv
 .env
 scanner/pins.json
+# Range dashboard
+api/range.db
+api/_test_range.db
+dashboard/node_modules
+dashboard/dist
