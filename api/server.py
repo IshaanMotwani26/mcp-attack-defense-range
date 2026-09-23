@@ -17,6 +17,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from api import db
 from api.scan_stream import stream_scan
@@ -156,3 +157,15 @@ async def ws_scan(websocket: WebSocket, scenario: str):
             pass
 
     await websocket.close()
+
+
+# ---- serve the built dashboard (production) -------------------------------
+# In production we ship one service: FastAPI serves the compiled React app on
+# the same origin as the API and WebSocket, so there's no CORS or cross-origin
+# socket to configure. This mount is LAST, so every /api and /ws route above
+# takes precedence; it only catches everything else (index.html, assets).
+# Guarded by existence so local dev — where the UI is served by the Vite dev
+# server and dashboard/dist doesn't exist — still runs API-only.
+_DIST = Path("dashboard/dist")
+if _DIST.is_dir():
+    app.mount("/", StaticFiles(directory=str(_DIST), html=True), name="dashboard")

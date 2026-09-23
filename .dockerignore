@@ -1,0 +1,20 @@
+# keep the image small and secrets out of it
+.git
+.venv
+**/__pycache__
+**/*.pyc
+
+# never bake the API key into the image
+.env
+
+# rebuilt inside the image
+dashboard/node_modules
+dashboard/dist
+
+# local runtime state
+api/range.db
+api/_test_range.db
+
+# docs / dev-only
+*.md
+!dashboard/RUN.md

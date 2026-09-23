@@ -16,6 +16,7 @@ in SQLite (via api.db) so rug-pull detection persists across runs.
 """
 
 import asyncio
+import sys
 
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
@@ -53,7 +54,11 @@ async def stream_scan(server_script: str):
 
     The caller (WebSocket handler) is responsible for persistence + framing.
     """
-    params = StdioServerParameters(command="python", args=[server_script])
+    # Spawn the server with the SAME interpreter running this process, so the
+    # child inherits the same venv (and therefore the mcp package). Using a bare
+    # "python" would pick up whatever is first on PATH — which in a container is
+    # the system interpreter, where mcp isn't installed.
+    params = StdioServerParameters(command=sys.executable, args=[server_script])
     try:
         async with stdio_client(params) as (read, write):
             async with ClientSession(read, write) as session:
