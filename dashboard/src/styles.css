@@ -269,3 +269,42 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .scope.scanning::after, .channel, .ch-verdict.v-malic, .drawer { animation: none; }
 }
+
+/* ---- clickable channel row (button) + reveal ----------------------------- */
+button.channel-row {
+  width: 100%; background: none; border: 0; padding: 0; margin: 0;
+  color: inherit; font: inherit; cursor: pointer; text-align: left;
+}
+.ch-chevron {
+  color: var(--muted); font-size: 11px; width: 12px; text-align: center;
+  flex-shrink: 0;
+}
+.channel.is-open .ch-chevron { color: var(--ink); }
+
+.reveal {
+  margin-top: 10px; border-top: 1px dashed var(--line); padding-top: 10px;
+  animation: resolve 0.2s ease both;
+}
+.reveal-label {
+  font-family: var(--mono); font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.14em; color: var(--muted); margin-bottom: 7px;
+}
+.reveal-desc {
+  font-family: var(--mono); font-size: 12px; line-height: 1.6;
+  color: var(--ink); background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--line); border-radius: 7px; padding: 11px 13px;
+  margin: 0; white-space: pre-wrap; word-break: break-word; overflow-x: auto;
+}
+/* highlighted flagged spans inside the description */
+.reveal-desc mark.hl {
+  border-radius: 3px; padding: 0 2px; color: var(--ink);
+  background: transparent; box-shadow: inset 0 -0.55em 0 rgba(255, 93, 115, 0.28);
+}
+.reveal-desc mark.hl.sev-high {
+  box-shadow: inset 0 -0.55em 0 rgba(255, 93, 115, 0.32);
+  color: #ffd7dd;
+}
+.reveal-desc mark.hl.sev-medium {
+  box-shadow: inset 0 -0.55em 0 rgba(232, 177, 76, 0.30);
+  color: #ffe9c2;
+}

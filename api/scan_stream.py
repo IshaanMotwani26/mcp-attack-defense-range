@@ -8,8 +8,9 @@ so the UI can light each channel up as it resolves.
 This module does NOT reimplement detection. It calls straight into the shipped
 engine:
 
-    scanner.rules.scan_text / verdict   -- the detection rules
-    scanner.pinning.fingerprint         -- the SHA-256 tool fingerprint
+    scanner.rules.scan_text / verdict         -- the detection rules
+    scanner.rules.scan_text_matches           -- where each rule matched
+    scanner.pinning.fingerprint               -- the SHA-256 tool fingerprint
 
 The only thing added here is transport (async event generator) and pin storage
 in SQLite (via api.db) so rug-pull detection persists across runs.
@@ -21,7 +22,7 @@ import sys
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
-from scanner.rules import scan_text, verdict
+from scanner.rules import scan_text, scan_text_matches, verdict
 from scanner.pinning import fingerprint
 from api import db
 
@@ -47,7 +48,7 @@ async def stream_scan(server_script: str):
       {"event": "connected", "tool_count": int}
       {"event": "tool", "index": int, "name": str, "verdict": str,
        "findings": [{"label": str, "severity": str}], "pin": str,
-       "description": str}
+       "description": str, "spans": [{"label","severity","start","end"}]}
       {"event": "verdict", "overall": str, "flagged": int,
        "rug_pull": bool, "tools": [...]}
       {"event": "error", "message": str}
@@ -56,7 +57,7 @@ async def stream_scan(server_script: str):
     """
     # Spawn the server with the SAME interpreter running this process, so the
     # child inherits the same venv (and therefore the mcp package). Using a bare
-    # "python" would pick up whatever is first on PATH — which in a container is
+    # "python" would pick up whatever is first on PATH -- which in a container is
     # the system interpreter, where mcp isn't installed.
     params = StdioServerParameters(command=sys.executable, args=[server_script])
     try:
@@ -77,6 +78,9 @@ async def stream_scan(server_script: str):
 
                     findings = [{"label": lbl, "severity": sev}
                                 for lbl, sev in raw_findings]
+                    # exact match locations, for highlighting the description
+                    spans = scan_text_matches(desc)
+
                     record = {
                         "index": i,
                         "name": tool.name,
@@ -84,6 +88,7 @@ async def stream_scan(server_script: str):
                         "findings": findings,
                         "pin": pin,
                         "description": desc.strip(),
+                        "spans": spans,
                     }
                     collected.append(record)
 

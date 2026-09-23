@@ -59,6 +59,32 @@ def scan_text(text: str):
     return unique
 
 
+def scan_text_matches(text: str):
+    """
+    Like scan_text, but also reports WHERE each rule matched.
+
+    Returns a list of {label, severity, start, end} — one entry per regex
+    match (a rule can match more than once). Used by the dashboard to highlight
+    the exact spans of a poisoned description, so a viewer sees not just the
+    verdict but the smoking gun: the hidden instruction that tripped it.
+
+    scan_text stays the summary (deduped labels); this is the evidence.
+    """
+    if not text:
+        return []
+    matches = []
+    for pattern, label, severity in RULES:
+        for m in re.finditer(pattern, text, re.IGNORECASE | re.DOTALL):
+            matches.append({
+                "label": label,
+                "severity": severity,
+                "start": m.start(),
+                "end": m.end(),
+            })
+    matches.sort(key=lambda x: (x["start"], x["end"]))
+    return matches
+
+
 def verdict(findings):
     """Roll a list of findings up into a single verdict string."""
     if not findings:
